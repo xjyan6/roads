@@ -140,149 +140,41 @@
 #' 
 #' @export
 #' 
-setGeneric('projectRoads', function(landings = NULL,
+setGeneric('projectRoads', function(sim, 
+                                    landings = NULL,
                                     cost = NULL,
                                     roads = NULL,
                                     roadMethod = "mst",
                                     plotRoads = FALSE,
                                     mainTitle = "",
                                     neighbourhood = "octagon",
-                                    sim = NULL,
                                     roadsOut = NULL,
                                     roadsInCost = TRUE, 
                                     ordering = "closest")
   standardGeneric('projectRoads'))
 
-#' @rdname projectRoads
-setMethod(
-  'projectRoads', signature(sim = "missing"),
-  function(landings, cost, roads, roadMethod, plotRoads, mainTitle,
-           neighbourhood, sim, roadsOut, roadsInCost, ordering) {
-    #landings=outObj$landings;cost=outObj$cost;roads=outObj$roads;roadMethod="mst";roadsOut = "raster"
-    #mainTitle = NULL;neighbourhood = "queen";sim = NULL;roadsInCost = TRUE
 
-    # check required args
-    missingNames = names(which(sapply(lst(roads, cost, roadMethod, landings),
-                                      is.null)))
-    if(length(missingNames) > 0){
-      stop("Argument(s): ", paste0(missingNames, collapse = ", "),
-           " are required if sim is not supplied")
-    }
-
-    recognizedRoadMethods = c("mst", "lcp", "dlcp", "snap")
-
-    if(!is.element(roadMethod,recognizedRoadMethods)){
-      stop("Invalid road method ", roadMethod, ". Options are:",
-           paste(recognizedRoadMethods, collapse=','))
-    }
-    
-    # if method is not dlcp ignore ordering
-    if(roadMethod != "dlcp"){
-      ordering <- "none"
-    }
-
-    # If roads in are raster return as raster
-    if((is(roads, "Raster") || is(roads, "SpatRaster")) && is.null(roadsOut) ){
-      roadsOut <- "raster"
-    } else if(is.null(roadsOut)) {
-      roadsOut <- "sf"
-    }
-
-    # set up sim list
-    sim <- buildSimList(roads = roads, cost = cost,
-                        roadMethod = roadMethod,
-                        landings = landings,
-                        roadsInCost = roadsInCost)
-    
-    sim$landingsIn <- sim$landings
-
-    # make sure the name of the sf_column is "geometry"
-    geoColInL <- attr(sim$landings, "sf_column")
-    if(geoColInL != "geometry"){
-      sim$landings <- rename(sim$landings, geometry = tidyselect::all_of(geoColInL))
-    }
-
-    #library(dplyr);library(sf)
-    geoColInR <- attr(sim$roads, "sf_column")
-    sim$roads <- select(sim$roads, everything(), geometry = tidyselect::all_of(geoColInR))
-
-    sim <- getGraph(sim, neighbourhood)
-
-    sim <- switch(sim$roadMethod,
-                  snap= {
-                    sim <- buildSnapRoads(sim, roadsOut)
-                  } ,
-                  lcp ={
-                    sim <- getClosestRoad(sim, ordering)
-
-                    sim <- lcpList(sim)
-
-                    # includes update graph
-                    sim <- shortestPaths(sim)
-                    
-                    sim <- outputRoads(sim, roadsOut)
-                  },
-                  dlcp ={
-                    sim <- getClosestRoad(sim, ordering)
-                    
-                    sim <- lcpList(sim)
-                    
-                    # includes dynamic update graph
-                    sim <- dynamicShortestPaths(sim)
-                    
-                    sim <- outputRoads(sim, roadsOut)
-                  },
-                  mst ={
-                    sim <- getClosestRoad(sim, ordering)
-
-                    # will take more time than lcpList given the construction of
-                    # a mst
-                    sim <- mstList(sim)
-
-                    # update graph is within the shortestPaths function
-                    sim <- shortestPaths(sim)
-                    
-                    sim <- outputRoads(sim, roadsOut)
-                  }
-    )
-
-    # put back original geometry column names
-    if(is(sim$roads, "sf")){
-      if(geoColInR != attr(sim$roads, "sf_column")){
-        sim$roads <- rename(sim$roads, geoColInR = .data$geometry)
-      }
-    }
-
-    # reset landings to include all input landings
-    sim$landings <- sim$landingsIn
-    sim$landingsIn <- NULL
-    
-    if(plotRoads){
-      plotRoads(sim, mainTitle)
-    }
-    
-    return(sim)
-  })
 
 #' @rdname projectRoads
 setMethod(
   'projectRoads', signature(sim = "list"),
   function(landings, cost, roads, roadMethod, plotRoads, mainTitle,
            neighbourhood, sim, roadsOut, roadsInCost, ordering) {
-
+    print("start running projectRoads function")
     # If roads in are raster return as raster
     if((is(sim$roads, "Raster") || is(sim$roads, "SpatRaster")) && is.null(roadsOut) ){
       roadsOut <- "raster"
     } else if(is.null(roadsOut)) {
       roadsOut <- "sf"
     }
-
+    print("add landings to sim list. Should involve all the same checks as before")
     # add landings to sim list. Should involve all the same checks as before
     sim <- buildSimList(sim$roads, sim$cost, sim$roadMethod, landings, 
                         roadsInCost = TRUE, sim = sim)
     
     sim$landingsIn <- sim$landings
     
+    print("make sure the name of the sf_column is geometry")
     # make sure the name of the sf_column is "geometry"
     geoColInL <- attr(sim$landings, "sf_column")
     if(geoColInL != "geometry"){
