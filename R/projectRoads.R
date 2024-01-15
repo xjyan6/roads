@@ -185,42 +185,41 @@ setMethod(
     sim$roads <- select(sim$roads, everything(), geometry = tidyselect::all_of(geoColInR))
     
     sim <- switch(sim$roadMethod,
-                  snap= {
-                    sim <- buildSnapRoads(sim, roadsOut)
-                  } ,
-                  lcp ={
-                    sim <- getClosestRoad(sim, ordering)
-
-                    sim <- lcpList(sim)
-
-                    # includes update graph
-                    sim <- shortestPaths(sim)
-                    
-                    sim <- outputRoads(sim, roadsOut)
-                  },
-                  dlcp ={
-                    sim <- getClosestRoad(sim, ordering)
-                    
-                    sim <- lcpList(sim)
-                    
-                    # includes dynamic update graph
-                    sim <- dynamicShortestPaths(sim)
-                    
-                    sim <- outputRoads(sim, roadsOut)
-                  },
-                  mst ={
-                    sim <- getClosestRoad(sim, ordering)
-
-                    # will take more time than lcpList given the construction of
-                    # a mst
-                    sim <- mstList(sim)
-
-                    # update graph is within the shortestPaths function
-                    sim <- shortestPaths(sim)
-                    
-                    sim <- outputRoads(sim, roadsOut)
-                  }
+      snap = {
+        temp_sim <- buildSnapRoads(sim, roadsOut)
+        # Additional processing if needed
+        temp_sim  # Return the temporary variable
+        },
+      lcp = {
+        temp_sim <- getClosestRoad(sim, ordering)
+        temp_sim <- lcpList(temp_sim)
+        temp_sim <- shortestPaths(temp_sim)
+        temp_sim <- outputRoads(temp_sim, roadsOut)
+        # Additional processing if needed
+        temp_sim  # Return the temporary variable
+      },
+      dlcp = {
+        temp_sim <- getClosestRoad(sim, ordering)
+        temp_sim <- lcpList(temp_sim)
+        temp_sim <- dynamicShortestPaths(temp_sim)
+        temp_sim <- outputRoads(temp_sim, roadsOut)
+        # Additional processing if needed
+        temp_sim  # Return the temporary variable
+      },
+      mst = {
+        temp_sim <- getClosestRoad(sim, ordering)
+        temp_sim <- mstList(temp_sim)
+        temp_sim <- shortestPaths(temp_sim)
+        temp_sim <- outputRoads(temp_sim, roadsOut)
+        # Additional processing if needed
+        temp_sim  # Return the temporary variable
+      }
     )
+
+    # Update the original sim variable
+    sim <- temp_sim
+
+
 
     # put back original geometry column names
     if(geoColInL != attr(sim$landings, "sf_column")){
